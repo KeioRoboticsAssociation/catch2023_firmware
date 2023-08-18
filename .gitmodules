@@ -19,3 +19,6 @@
 [submodule "lib/rpico-encoder-base"]
 	path = lib/rpico-encoder-base
 	url = https://github.com/hirobon1690/rpico-encoder-base.git
+[submodule "lib/rpico-gpioex"]
+	path = lib/rpico-gpioex
+	url = https://github.com/hirobon1690/rpico-gpioex.git
