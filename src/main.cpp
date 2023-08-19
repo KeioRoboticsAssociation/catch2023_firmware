@@ -25,13 +25,13 @@ Gpio stp(8, OUTPUT);
 Gpio slp(28, OUTPUT);
 
 bool timer_cb(repeating_timer_t* rt) {
-    // motor[0].timer_cb();
+    motor[0].timer_cb();
     motor[1].timer_cb();
     return true;
 }
 
 bool timer_cb_pos(repeating_timer_t* rt) {
-    // motor[0].timer_cb_pos();
+    motor[0].timer_cb_pos();
     motor[1].timer_cb_pos();
     return true;
 }
@@ -57,40 +57,21 @@ int main() {
     slp.init();
     stp.init();
     slp.write(1);
-    ex.init();
+    // ex.init();
 
-    ex.mode(0, OUTPUT);
-    ex.mode(1, OUTPUT);
-    ex.mode(2, OUTPUT);
-    ex.mode(3, OUTPUT);
-    ex.mode(4, OUTPUT);
-    ex.mode(5, INPUT_PU);
-    ex.mode(6, INPUT_PU);
-    ex.mode(7, INPUT_PU);
+    // ex.mode(0, OUTPUT);
+    // ex.mode(1, OUTPUT);
+    // ex.mode(2, OUTPUT);
+    // ex.mode(3, OUTPUT);
+    // ex.mode(4, OUTPUT);
+    // ex.mode(5, INPUT_PU);
+    // ex.mode(6, INPUT_PU);
+    // ex.mode(7, INPUT_PU);
 
-    ex.set();
-    ex.write(0, 1);
-    ex.write(1, 1);
-    slp.write(1);
-
-    while (1) {
-        for (int i = 0; i < 250; i++) {
-            ex.write(1, 1);
-            stp.write(1);
-            sleep_us(10);
-            stp.write(0);
-            sleep_us(2000);
-        }
-        sleep_ms(1000);
-        for (int i = 0; i < 250; i++) {
-            ex.write(1, 0);
-            stp.write(1);
-            sleep_us(10);
-            stp.write(0);
-            sleep_us(2000);
-        }
-        sleep_ms(1000);
-    }
+    // ex.set();
+    // ex.write(0, 1);
+    // ex.write(1, 1);
+    // slp.write(1);
 
     motor[0].init();
     motor[0].setPosGain(3.8, 0.12, 1.2);
@@ -100,10 +81,14 @@ int main() {
     motor[1].setPosGain(4.0, 0, 0);
     motor[1].setMaxSpeed(2000);
     // motor[1].disablePosPid();
-    // motor[0].duty(0.1);
-    // motor[1].duty(0.1);
     sleep_ms(10);
     amt232.init();
+    // motor[0].duty(0.1);
+    // motor[1].duty(0.1);
+    // while (1) {
+    //     /* code */
+    // }
+
     initTimer();
     while (1) {
         // motor[0].setVel(90);
@@ -122,9 +107,9 @@ int main() {
         // sleep_ms(6000);
 
         // sleep_ms(6000);
-        sleep_ms(10000);
+        sleep_ms(5000);
         motor[0].setPos(0);
         motor[1].setPos(0);
-        sleep_ms(10000);
+        sleep_ms(5000);
     }
 }
