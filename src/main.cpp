@@ -1,10 +1,12 @@
 #include <pico/stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "amt232.h"
 #include "encoderBase.h"
 #include "gpio.h"
 #include "gpioex.h"
 #include "motor.h"
+#include "pico/multicore.h"
 #include "pwm.h"
 #include "qenc.h"
 
@@ -23,6 +25,8 @@ Motor motor[2] = {
     Motor(dir1, pwm1, enc, dum1)};
 Gpio stp(8, OUTPUT);
 Gpio slp(28, OUTPUT);
+float degpos[2] = {0, 0};
+char buf[256] = "";
 
 bool timer_cb(repeating_timer_t* rt) {
     motor[0].timer_cb();
@@ -44,9 +48,26 @@ void initTimer() {
     add_repeating_timer_ms(-100, timer_cb_pos, NULL, &timer1);
 }
 
+void serial_read() {
+    while (1) {
+        int cnt = 0;
+        while (1) {
+            char c = getchar_timeout_us(100000000000);
+            buf[cnt] = c;
+            if (c == '\n') {
+                cnt = 0;
+                sscanf(buf, "%f,%f", &degpos[0], &degpos[1]);
+                memset(buf, '\0', 256);
+                break;
+            }
+            cnt++;
+        }
+    }
+}
+
 int main() {
     stdio_init_all();
-
+    multicore_launch_core1(serial_read);
     sleep_ms(10);
     cs0.init();
     dum0.init();
@@ -59,57 +80,37 @@ int main() {
     slp.write(1);
     // ex.init();
 
-    // ex.mode(0, OUTPUT);
-    // ex.mode(1, OUTPUT);
-    // ex.mode(2, OUTPUT);
-    // ex.mode(3, OUTPUT);
-    // ex.mode(4, OUTPUT);
-    // ex.mode(5, INPUT_PU);
-    // ex.mode(6, INPUT_PU);
-    // ex.mode(7, INPUT_PU);
+    // // ex.mode(0, OUTPUT);
+    // // ex.mode(1, OUTPUT);
+    // // ex.mode(2, OUTPUT);
+    // // ex.mode(3, OUTPUT);
+    // // ex.mode(4, OUTPUT);
+    // // ex.mode(5, INPUT_PU);
+    // // ex.mode(6, INPUT_PU);
+    // // ex.mode(7, INPUT_PU);
 
-    // ex.set();
-    // ex.write(0, 1);
-    // ex.write(1, 1);
-    // slp.write(1);
+    // // ex.set();
+    // // ex.write(0, 1);
+    // // ex.write(1, 1);
+    // // slp.write(1);
 
     motor[0].init();
     motor[0].setPosGain(3.8, 0.12, 1.2);
-    // motor[0].disablePosPid();
+    // // motor[0].disablePosPid();
     sleep_ms(10);
     motor[1].init(1);
     motor[1].setPosGain(4.0, 0, 0);
     motor[1].setMaxSpeed(2000);
-    // motor[1].disablePosPid();
+    // // motor[1].disablePosPid();
     sleep_ms(10);
     amt232.init();
-    // motor[0].duty(0.1);
-    // motor[1].duty(0.1);
-    // while (1) {
-    //     /* code */
-    // }
-
     initTimer();
     while (1) {
-        // motor[0].setVel(90);
-        motor[0].setPos(90);
-        // motor[1].setVel(-50);
-        motor[1].setPos(-1125);
-        // tx_data[0] = 0x0c;
-        // tx_data[1] = 0x00;
-
-        // dum0.write(0);
-        // spi_write_read_blocking(spi0, tx_data, rx_data, 2);
-        // dum0.write(1);
-        // printf("data: %x, %x\n", rx_data[0], rx_data[1]);
+        printf("%f, %f\n", degpos[0], degpos[1]);
+        motor[0].setPos(-degpos[0]);
+        motor[1].setPos(-degpos[1] * 360 / 72);
+        sleep_ms(1);
         // printf("%d, %d, %d\n",amt232.get(),amt232.getRaw(),amt232.get()%4096);
         // printf("%d\n", enc.get());
-        // sleep_ms(6000);
-
-        // sleep_ms(6000);
-        sleep_ms(5000);
-        motor[0].setPos(0);
-        motor[1].setPos(0);
-        sleep_ms(5000);
     }
 }
