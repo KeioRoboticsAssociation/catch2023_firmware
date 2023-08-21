@@ -22,3 +22,6 @@
 [submodule "lib/rpico-gpioex"]
 	path = lib/rpico-gpioex
 	url = https://github.com/hirobon1690/rpico-gpioex.git
+[submodule "lib/rpico-stepper"]
+	path = lib/rpico-stepper
+	url = https://github.com/hirobon1690/rpico-stepper.git
