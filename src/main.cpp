@@ -29,7 +29,11 @@ Gpio slp(28, OUTPUT);
 Gpio stp_dir(1, OUTPUT, EX);
 Stepper stepper(stp, slp, stp_dir);
 float degpos[2] = {0, 0};
-char buf[256] = "";
+int stepperState = 0;
+char buf[255] = "";
+static repeating_timer_t timer;
+static repeating_timer_t timer1;
+static repeating_timer_t timer2;
 
 bool timer_cb(repeating_timer_t* rt) {
     motor[0].timer_cb();
@@ -49,12 +53,9 @@ bool timer_cb_stp(repeating_timer_t* rt) {
 }
 
 void initTimer() {
-    static repeating_timer_t timer;
-    static repeating_timer_t timer1;
-    static repeating_timer_t timer2;
     // add_repeating_timer_ms(-10, timer_cb, NULL, &timer);
     // add_repeating_timer_ms(-100, timer_cb_pos, NULL, &timer1);
-    add_repeating_timer_ms(-1, timer_cb_stp, NULL, &timer2);
+    add_repeating_timer_us(-500, timer_cb_stp, NULL, &timer2);
 }
 
 void serial_read() {
@@ -65,8 +66,8 @@ void serial_read() {
             buf[cnt] = c;
             if (c == '\n') {
                 cnt = 0;
-                sscanf(buf, "%f,%f", &degpos[0], &degpos[1]);
-                memset(buf, '\0', 256);
+                sscanf(buf, "%1d %f %f\n", &stepperState, &degpos[0], &degpos[1]);
+                memset(buf, '\0', 255);
                 break;
             }
             cnt++;
@@ -112,16 +113,35 @@ int main() {
     motor[1].setMaxSpeed(2000);
     // // motor[1].disablePosPid();
     sleep_ms(10);
-    // stepper.init();
-    // stepper.sleep(1);
-    stepper.setPeriod(20);
+    stepper.init();
+    stepper.sleep(1);
+    stepper.setPeriod(2);
     amt232.init();
-    // initTimer();
+    initTimer();
     while (1) {
-        stepper.setTarget(360000);
-        // printf("%f, %f\n", degpos[0], degpos[1]);
-        // motor[0].setPos(-degpos[0]);
-        // motor[1].setPos(-degpos[1] * 360 / 72);
+        printf("%d, %f, %f\n", stepperState, degpos[0], degpos[1]);
+        switch (stepperState) {
+            case 0:
+                stepper.disable();
+                stepper.setTargetMillimeter(0);
+                stepper.enable();
+                break;
+            case 1:
+                stepper.disable();
+                stepper.setTargetMillimeter(150);
+                stepper.enable();
+                break;
+            case 2:
+                stepper.disable();
+                stepper.setTargetMillimeter(300);
+                stepper.enable();
+                break;
+            default:
+                break;
+        }
+
+        motor[0].setPos(-degpos[0]);
+        motor[1].setPos(-degpos[1] * 360 / 72);
         sleep_ms(1);
         // printf("%d, %d, %d\n",amt232.get(),amt232.getRaw(),amt232.get()%4096);
         // printf("%d\n", enc.get());
