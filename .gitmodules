@@ -25,3 +25,6 @@
 [submodule "lib/rpico-stepper"]
 	path = lib/rpico-stepper
 	url = https://github.com/hirobon1690/rpico-stepper.git
+[submodule "lib/rpico-servo"]
+	path = lib/rpico-servo
+	url = https://github.com/hirobon1690/rpico-servo.git
