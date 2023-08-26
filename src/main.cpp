@@ -17,6 +17,8 @@ Qenc enc(12);
 Gpio cs0(25, OUTPUT);
 Gpio dum0(1, OUTPUT);
 Gpio dum1(6, OUTPUT);
+Gpio sw0(22, INPUT_PD);
+Gpio sw1(23, INPUT_PD);
 Pwm pwm0(19, 10000, 1);
 Pwm pwm1(16, 10000, 1);
 Gpio dir0(20, OUTPUT);
@@ -34,6 +36,12 @@ char buf[255] = "";
 static repeating_timer_t timer;
 static repeating_timer_t timer1;
 static repeating_timer_t timer2;
+
+void sw0_cb(uint gpio, uint32_t events){
+    printf("sw0\n");
+    while(1);
+}
+
 
 bool timer_cb(repeating_timer_t* rt) {
     motor[0].timer_cb();
@@ -92,6 +100,7 @@ int main() {
     slp.write(1);
     // // ex.mode(0, OUTPUT);
     ex.mode(1, OUTPUT);
+    gpio_set_irq_enabled_with_callback(22, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
     // // ex.mode(2, OUTPUT);
     // // ex.mode(3, OUTPUT);
     // // ex.mode(4, OUTPUT);
@@ -119,7 +128,7 @@ int main() {
     amt232.init();
     initTimer();
     while (1) {
-        printf("%d, %f, %f\n", stepperState, degpos[0], degpos[1]);
+        printf("%d, %f, %f，%d, %d, %d\n", stepperState, degpos[0], degpos[1],amt232.getRaw(),sw0.read(),sw1.read());
         switch (stepperState) {
             case 0:
                 stepper.disable();
