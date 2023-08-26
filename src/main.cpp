@@ -121,6 +121,8 @@ int main() {
     stepper.setPeriod(2);
     amt232.init();
     // initTimer();
+    servo0.write(0);
+    while(1);
     while (1) {
         servo0.write(38);
         // servo0.write(38);
