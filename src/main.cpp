@@ -1,178 +1,92 @@
-#include <pico/stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "amt232.h"
-#include "encoderBase.h"
-#include "gpio.h"
-#include "gpioex.h"
-#include "motor.h"
-#include "pico/multicore.h"
-#include "pwm.h"
-#include "qenc.h"
-#include "stepper.h"
-
-const uint CS_PIN = 25;
-AMT232 amt232(CS_PIN, 3, 0, 2);
-Qenc enc(12);
-Gpio cs0(25, OUTPUT);
-Gpio dum0(1, OUTPUT);
-Gpio dum1(6, OUTPUT);
-Gpio sw0(22, INPUT_PD);
-Gpio sw1(23, INPUT_PD);
-Pwm pwm0(19, 10000, 1);
-Pwm pwm1(16, 10000, 1);
-Gpio dir0(20, OUTPUT);
-Gpio dir1(17, OUTPUT);
-Motor motor[2] = {
-    Motor(dir0, pwm0, amt232, dum0),
-    Motor(dir1, pwm1, enc, dum1)};
-Gpio stp(8, OUTPUT);
-Gpio slp(28, OUTPUT);
-Gpio stp_dir(1, OUTPUT, EX);
-Stepper stepper(stp, slp, stp_dir);
-float degpos[2] = {0, 0};
-int stepperState = 0;
-char buf[255] = "";
-static repeating_timer_t timer;
-static repeating_timer_t timer1;
-static repeating_timer_t timer2;
-
-void sw0_cb(uint gpio, uint32_t events){
-    motor[1].reset();
-    printf("sw0\n");
-    while(1);
-}
+ // --------------------------------------
+// i2c_scanner
+//
+// Version 1
+//    This program (or code that looks like it)
+//    can be found in many places.
+//    For example on the Arduino.cc forum.
+//    The original author is not know.
+// Version 2, Juni 2012, Using Arduino 1.0.1
+//     Adapted to be as simple as possible by Arduino.cc user Krodal
+// Version 3, Feb 26  2013
+//    V3 by louarnold
+// Version 4, March 3, 2013, Using Arduino 1.0.3
+//    by Arduino.cc user Krodal.
+//    Changes by louarnold removed.
+//    Scanning addresses changed from 0...127 to 1...119,
+//    according to the i2c scanner by Nick Gammon
+//    https://www.gammon.com.au/forum/?id=10896
+// Version 5, March 28, 2013
+//    As version 4, but address scans now to 127.
+//    A sensor seems to use address 120.
+// Version 6, November 27, 2015.
+//    Added waiting for the Leonardo serial communication.
+// 
+//
+// This sketch tests the standard 7-bit addresses
+// Devices with higher bit address might not be seen properly.
+//
+#include <Arduino.h>
+#include <Wire.h>
 
 
-bool timer_cb(repeating_timer_t* rt) {
-    motor[0].timer_cb();
-    motor[1].timer_cb();
-    return true;
-}
-
-bool timer_cb_pos(repeating_timer_t* rt) {
-    motor[0].timer_cb_pos();
-    motor[1].timer_cb_pos();
-    return true;
-}
-
-bool timer_cb_stp(repeating_timer_t* rt) {
-    stepper.timer_cb();
-    return true;
-}
-
-void initTimer() {
-    // add_repeating_timer_ms(-10, timer_cb, NULL, &timer);
-    // add_repeating_timer_ms(-100, timer_cb_pos, NULL, &timer1);
-    add_repeating_timer_us(-500, timer_cb_stp, NULL, &timer2);
-}
-
-void serial_read() {
-    while (1) {
-        int cnt = 0;
-        while (1) {
-            char c = getchar_timeout_us(100000000000);
-            buf[cnt] = c;
-            if (c == '\n') {
-                cnt = 0;
-                sscanf(buf, "%1d %f %f\n", &stepperState, &degpos[0], &degpos[1]);
-                memset(buf, '\0', 255);
-                break;
-            }
-            cnt++;
-        }
-    }
-}
-
-void homing(){
-    motor[1].duty(-0.1);
-    while(1){
-        if(!sw0.read()){
-            motor[1].reset();
-            break;
-        }
-    }
-}
-
-int main() {
+void setup()
+{
     stdio_init_all();
-    multicore_launch_core1(serial_read);
-    sleep_ms(10);
-    cs0.init();
-    dum0.init();
-    dum1.init();
-    cs0.write(1);
-    dum0.write(1);
-    dum1.write(1);
-    slp.init();
-    stp.init();
-    slp.write(1);
-    ex.init();
-    slp.write(1);
-    sw0.init();
-    // // ex.mode(0, OUTPUT);
-    ex.mode(1, OUTPUT);
-    // // ex.mode(2, OUTPUT);
-    // // ex.mode(3, OUTPUT);
-    // // ex.mode(4, OUTPUT);
-    // // ex.mode(5, INPUT_PU);
-    // // ex.mode(6, INPUT_PU);
-    // // ex.mode(7, INPUT_PU);
+  Wire.begin();
 
-    ex.set();
-    // // ex.write(0, 1);
-    ex.write(1, 1);
-    // // slp.write(1);
+  Serial.begin(9600);
+  while (!Serial);             // Leonardo: wait for serial monitor
+  Serial.println("\nI2C Scanner");
+}
 
-    motor[0].init();
-    motor[0].setPosGain(3.8, 0.12, 1.2);
-    // // motor[0].disablePosPid();
-    sleep_ms(10);
-    motor[1].init(1);
-    motor[1].setPosGain(4.0, 0, 0);
-    motor[1].setMaxSpeed(2000);
-    // // motor[1].disablePosPid();
-    sleep_ms(10);
-    stepper.init();
-    stepper.sleep(1);
-    stepper.setPeriod(2);
-    amt232.init();
 
-    motor[0].duty(0.5);
-    // motor[1].duty(0.1);
+void loop()
+{
+  byte error, address;
+  int nDevices;
 
-    homing();
-    gpio_set_irq_enabled_with_callback(22, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
+  Serial.println("Scanning...");
 
-    while(1);
-    initTimer();
+  nDevices = 0;
+  for(address = 1; address < 127; address++ ) 
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
 
-    while (1) {
-        printf("%d, %f, %f，%d, %d, %d\n", stepperState, degpos[0], degpos[1],amt232.getRaw(),sw0.read(),sw1.read());
-        switch (stepperState) {
-            case 0:
-                stepper.disable();
-                stepper.setTargetMillimeter(0);
-                stepper.enable();
-                break;
-            case 1:
-                stepper.disable();
-                stepper.setTargetMillimeter(150);
-                stepper.enable();
-                break;
-            case 2:
-                stepper.disable();
-                stepper.setTargetMillimeter(300);
-                stepper.enable();
-                break;
-            default:
-                break;
-        }
+    if (error == 0)
+    {
+      Serial.print("I2C device found at address 0x");
+      if (address<16) 
+        Serial.print("0");
+      Serial.print(address,HEX);
+      Serial.println("  !");
 
-        motor[0].setPos(-degpos[0]);
-        motor[1].setPos(-degpos[1] * 360 / 72);
-        sleep_ms(1);
-        // printf("%d, %d, %d\n",amt232.get(),amt232.getRaw(),amt232.get()%4096);
-        // printf("%d\n", enc.get());
+      nDevices++;
     }
+    else if (error==4) 
+    {
+      Serial.print("Unknown error at address 0x");
+      if (address<16) 
+        Serial.print("0");
+      Serial.println(address,HEX);
+    }    
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println("done\n");
+
+  delay(5000);           // wait 5 seconds for next scan
+}
+
+int main(){
+    setup();
+    while(1){
+        loop();
+    }
+    return 0;
 }
