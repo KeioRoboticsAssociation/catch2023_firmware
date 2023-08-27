@@ -38,6 +38,7 @@ static repeating_timer_t timer1;
 static repeating_timer_t timer2;
 
 void sw0_cb(uint gpio, uint32_t events){
+    motor[1].reset();
     printf("sw0\n");
     while(1);
 }
@@ -83,6 +84,16 @@ void serial_read() {
     }
 }
 
+void homing(){
+    motor[1].duty(-0.1);
+    while(1){
+        if(!sw0.read()){
+            motor[1].reset();
+            break;
+        }
+    }
+}
+
 int main() {
     stdio_init_all();
     multicore_launch_core1(serial_read);
@@ -98,9 +109,9 @@ int main() {
     slp.write(1);
     ex.init();
     slp.write(1);
+    sw0.init();
     // // ex.mode(0, OUTPUT);
     ex.mode(1, OUTPUT);
-    gpio_set_irq_enabled_with_callback(22, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
     // // ex.mode(2, OUTPUT);
     // // ex.mode(3, OUTPUT);
     // // ex.mode(4, OUTPUT);
@@ -126,7 +137,16 @@ int main() {
     stepper.sleep(1);
     stepper.setPeriod(2);
     amt232.init();
+
+    motor[0].duty(0.5);
+    // motor[1].duty(0.1);
+
+    homing();
+    gpio_set_irq_enabled_with_callback(22, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
+
+    while(1);
     initTimer();
+
     while (1) {
         printf("%d, %f, %f，%d, %d, %d\n", stepperState, degpos[0], degpos[1],amt232.getRaw(),sw0.read(),sw1.read());
         switch (stepperState) {
