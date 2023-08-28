@@ -28,3 +28,6 @@
 [submodule "lib/rpico-servo"]
 	path = lib/rpico-servo
 	url = https://github.com/hirobon1690/rpico-servo.git
+[submodule "lib/rpico-adafruit"]
+	path = lib/rpico-adafruit
+	url = git@github.com:hirobon1690/rpico-adafruit.git
