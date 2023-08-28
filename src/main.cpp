@@ -1,6 +1,7 @@
 #include <pico/stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "Adafruit_PWMServoDriver.h"
 #include "amt232.h"
 #include "encoderBase.h"
 #include "gpio.h"
@@ -9,6 +10,7 @@
 #include "pico/multicore.h"
 #include "pwm.h"
 #include "qenc.h"
+#include "servo.h"
 #include "stepper.h"
 
 const uint CS_PIN = 25;
@@ -21,6 +23,7 @@ Gpio sw0(22, INPUT_PD);
 Gpio sw1(23, INPUT_PD);
 Pwm pwm0(19, 10000, 1);
 Pwm pwm1(16, 10000, 1);
+Servo servo0(22);
 Gpio dir0(20, OUTPUT);
 Gpio dir1(17, OUTPUT);
 Motor motor[2] = {
@@ -36,6 +39,13 @@ char buf[255] = "";
 static repeating_timer_t timer;
 static repeating_timer_t timer1;
 static repeating_timer_t timer2;
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+#define SERVOMIN 150   // This is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX 600   // This is the 'maximum' pulse length count (out of 4096)
+#define USMIN 600      // This is the rounded 'minimum' microsecond length based on the minimum pulse of 150
+#define USMAX 2400     // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
+#define SERVO_FREQ 50  // Analog servos run at ~50 Hz updates
 
 void sw0_cb(uint gpio, uint32_t events){
     motor[1].reset();
@@ -59,6 +69,16 @@ bool timer_cb_pos(repeating_timer_t* rt) {
 bool timer_cb_stp(repeating_timer_t* rt) {
     stepper.timer_cb();
     return true;
+}
+
+void setServoAngle(int servoNum, float deg) {
+    if (deg < 0)
+        deg = 0;
+    if (deg > 180)
+        deg = 180;
+    pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
+    pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
+    pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
 }
 
 void initTimer() {
@@ -96,8 +116,9 @@ void homing(){
 
 int main() {
     stdio_init_all();
-    multicore_launch_core1(serial_read);
+    // multicore_launch_core1(serial_read);
     sleep_ms(10);
+
     cs0.init();
     dum0.init();
     dum1.init();
@@ -109,6 +130,7 @@ int main() {
     slp.write(1);
     ex.init();
     slp.write(1);
+    servo0.init();
     sw0.init();
     // // ex.mode(0, OUTPUT);
     ex.mode(1, OUTPUT);
@@ -145,7 +167,16 @@ int main() {
     gpio_set_irq_enabled_with_callback(22, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
 
     while(1);
-    initTimer();
+    // initTimer();
+
+    pwm.begin();
+    pwm.setOscillatorFrequency(27000000);
+    pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+
+    servo0.write(0);
+
+    // setServoAngle(0, 45s);
+
 
     while (1) {
         printf("%d, %f, %f，%d, %d, %d\n", stepperState, degpos[0], degpos[1],amt232.getRaw(),sw0.read(),sw1.read());
@@ -169,10 +200,18 @@ int main() {
                 break;
         }
 
-        motor[0].setPos(-degpos[0]);
-        motor[1].setPos(-degpos[1] * 360 / 72);
-        sleep_ms(1);
-        // printf("%d, %d, %d\n",amt232.get(),amt232.getRaw(),amt232.get()%4096);
-        // printf("%d\n", enc.get());
+    while (1) {
+        setServoAngle(1, 30);
+        sleep_ms(10);
+        setServoAngle(2, 35);
+        sleep_ms(10);
+        setServoAngle(3, 85);
+        sleep_ms(1000);
+        setServoAngle(1, 90);
+        sleep_ms(10);
+        setServoAngle(2, 90);
+        sleep_ms(10);
+        setServoAngle(3, 40);
+        sleep_ms(2000);
     }
 }
