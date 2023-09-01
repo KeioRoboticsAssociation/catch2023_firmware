@@ -94,6 +94,29 @@ void setServoAngle(int servoNum, float deg) {
     pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
 }
 
+void mg996r(int servoNum, float deg) {
+    static int prevDeg;
+    pwm.writeMicroseconds(servoNum, 0);
+    pwm.writeMicroseconds(servoNum, 0);
+    pwm.writeMicroseconds(servoNum, 0);
+    if (deg < 0)
+        deg = 0;
+    if (deg > 180)
+        deg = 180;
+
+    if (deg - prevDeg > 0) {
+        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+    } else {
+        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+    }
+    prevDeg = deg;
+}
+
+
 void reset() {
     watchdog_enable(1, 1);
     while (1)
@@ -302,7 +325,7 @@ int main() {
         }
         switch (hand) {
             case 0:
-                setServoAngle(0, 40);
+                setServoAngle(0, 55);
                 break;
             case 1:
                 setServoAngle(0, 0);
@@ -310,7 +333,7 @@ int main() {
             default:
                 break;
         }
-        setServoAngle(7, armtheta);
+        mg996r(7, armtheta);
         // setServoAngle(7, 0);
         cnt++;
         sleep_ms(1);
