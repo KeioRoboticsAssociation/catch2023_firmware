@@ -184,9 +184,9 @@ int main() {
     // setServoAngle(0, 45s);
 
     while (1) {
-        int servoNum = 0;
-        // mg996r(servoNum, servoPulseLength);
-        deg45(servoNum, servoPulseLength);
+        int servoNum = 7;
+        mg996r(servoNum, servoPulseLength);
+        // deg45(servoNum, servoPulseLength);
         sleep_ms(1000);
     }
 
