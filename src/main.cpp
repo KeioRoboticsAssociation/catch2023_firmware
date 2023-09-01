@@ -72,11 +72,45 @@ void setServoAngle(int servoNum, float deg) {
     pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
 }
 
+void mg996r(int servoNum, float deg) {
+    static int prevDeg;
+    pwm.writeMicroseconds(servoNum, 0);
+    pwm.writeMicroseconds(servoNum, 0);
+    pwm.writeMicroseconds(servoNum, 0);
+    if (deg < 0)
+        deg = 0;
+    if (deg > 180)
+        deg = 180;
+
+    if (deg - prevDeg > 0) {
+        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+    } else {
+        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+    }
+    prevDeg = deg;
+}
+
+void deg45(int servoNum, float deg) {
+    if (deg < 0)
+        deg = 0;
+    if (deg > 180)
+        deg = 180;
+    pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
+    pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
+    pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
+}
+
 void initTimer() {
     // add_repeating_timer_ms(-10, timer_cb, NULL, &timer);
     // add_repeating_timer_ms(-100, timer_cb_pos, NULL, &timer1);
     add_repeating_timer_us(-500, timer_cb_stp, NULL, &timer2);
 }
+
+int servoPulseLength = 0;
 
 void serial_read() {
     while (1) {
@@ -86,7 +120,7 @@ void serial_read() {
             buf[cnt] = c;
             if (c == '\n') {
                 cnt = 0;
-                sscanf(buf, "%1d %f %f\n", &stepperState, &degpos[0], &degpos[1]);
+                sscanf(buf, "%d\n", &servoPulseLength);
                 memset(buf, '\0', 255);
                 break;
             }
@@ -97,7 +131,7 @@ void serial_read() {
 
 int main() {
     stdio_init_all();
-    // multicore_launch_core1(serial_read);
+    multicore_launch_core1(serial_read);
     sleep_ms(10);
 
     cs0.init();
@@ -150,21 +184,10 @@ int main() {
     // setServoAngle(0, 45s);
 
     while (1) {
-        setServoAngle(7, 30);
-        
+        int servoNum = 0;
+        // mg996r(servoNum, servoPulseLength);
+        deg45(servoNum, servoPulseLength);
         sleep_ms(1000);
-        setServoAngle(7, 90);
-        sleep_ms(2000);
-        // for(int i=0;i<180;i++){
-        //     setServoAngle(7, i);
-        //     printf("%d\n", i);
-        //     sleep_ms(10);
-        // }
-        // for(int i=180;i>0;i--){
-        //     setServoAngle(7, i);
-        //     printf("%d\n", i);
-        //     sleep_ms(10);
-        // }
     }
 
     while (1) {
