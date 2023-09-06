@@ -15,6 +15,10 @@
 #include "stepper.h"
 
 const uint CS_PIN = 25;
+const int STP_POS_0 = 0;
+const int STP_POS_1 = 150;
+const int STP_POS_2 = 250;
+
 AMT232 amt232(CS_PIN, 3, 0, 2);
 Qenc enc(12);
 Gpio cs0(25, OUTPUT);
@@ -40,7 +44,7 @@ int servoState = 0;
 int armtheta = 0;
 int hand = 0;
 float degpos[2] = {0, 0};
-int stepperState = 0;
+int stepperState, currentStepperState = 0;
 char buf[255] = "";
 static repeating_timer_t timer;
 static repeating_timer_t timer1;
@@ -96,26 +100,25 @@ void setServoAngle(int servoNum, float deg) {
 
 void mg996r(int servoNum, float deg) {
     static int prevDeg;
-    pwm.writeMicroseconds(servoNum, 0);
-    pwm.writeMicroseconds(servoNum, 0);
-    pwm.writeMicroseconds(servoNum, 0);
+    // pwm.writeMicroseconds(servoNum, 0);
+    // pwm.writeMicroseconds(servoNum, 0);
+    // pwm.writeMicroseconds(servoNum, 0);
     if (deg < 0)
         deg = 0;
     if (deg > 180)
         deg = 180;
 
-    if (deg - prevDeg > 0) {
-        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
-        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
-        pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
-    } else {
-        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
-        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
-        pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
-    }
-    prevDeg = deg;
+    // if (deg - prevDeg > 0) {
+    //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+    //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+    //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
+    // } else {
+    pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+    pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+    pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+    // }
+    // prevDeg = deg;
 }
-
 
 void reset() {
     watchdog_enable(1, 1);
@@ -151,30 +154,23 @@ void serial_read() {
 }
 
 void catchObject() {
-    setServoAngle(1, 55);
+    setServoAngle(1, 60);
     sleep_ms(10);
-    setServoAngle(2, 50);
+    setServoAngle(2, 60);
     sleep_ms(10);
-    setServoAngle(3, 40);
+    setServoAngle(3, 60);
 }
 
 void releaseObject() {
-    setServoAngle(1, 115);
+    setServoAngle(1, 130);
     sleep_ms(10);
-    setServoAngle(2, 110);
+    setServoAngle(2, 135);
     sleep_ms(10);
-    setServoAngle(3, 100);
+    setServoAngle(3, 140);
 }
 
 void homing() {
     printf("homing\n");
-    motor[1].duty(-0.1);
-    while (1) {
-        if (!sw0.read()) {
-            motor[1].reset();
-            break;
-        }
-    }
     stp_dir.write(1);
     while (1) {
         stp.write(1);
@@ -185,6 +181,15 @@ void homing() {
             break;
         }
     }
+    printf("Stepper homing done\n");
+    motor[1].duty(-0.1);
+    while (1) {
+        if (!sw0.read()) {
+            motor[1].reset();
+            break;
+        }
+    }
+    printf("Motor[1] homing don e\n");
 }
 
 int main() {
@@ -260,6 +265,15 @@ int main() {
     // motor[0].duty(0.5);
     // motor[1].duty(0.1);
 
+    // if(!sw1.read()){
+    //     printf("Calib\n");
+    //     int offset = amt232.getRaw();
+    //     amt232.setOffset(offset);
+    //     printf("offset: %d\n", offset);
+    //     printf("Calib done. Please reset.\n");
+    //     while(1);
+    // }
+
     homing();
     gpio_set_irq_enabled_with_callback(22, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
     gpio_set_irq_enabled_with_callback(23, GPIO_IRQ_EDGE_FALL, true, &sw0_cb);
@@ -280,34 +294,34 @@ int main() {
         motor[0].setPos(-degpos[0]);
         if (degpos[1] < 0) {
             degpos[1] = 0;
-        } else if (degpos[1] > 542) {
-            degpos[1] = 542;
+        } else if (degpos[1] > 540) {
+            degpos[1] = 540;
         }
         motor[1].setPos(degpos[1] * 360 / 72 < 0 ? 0 : degpos[1] * 360 / 72);
-        printf("%f, %f, %d, %d, %d, %d, %f, %f，%d, %d, %d, %d, %d, %d\n",
+        printf("%f, %f, %d, %d, %d, %d, %d, %f, %f，%d, %d, %d, %d, %d, %d\n",
                -motor[0].getCurrent(),
                motor[1].getCurrent() * 72 / 360.0,
-               servoState, 
-               hand, 
-               armtheta, 
-               degpos[0], 
-               degpos[1], 
-               amt232.getRaw(), 
-               enc.get(), 
-               sw0.read(), 
-               sw1.read(), 
-               sw2.read(), 
-               sw3.read()
-            );
+               currentStepperState,
+               servoState,
+               hand,
+               armtheta,
+               degpos[0],
+               degpos[1],
+               amt232.getRaw(),
+               enc.get(),
+               sw0.read(),
+               sw1.read(),
+               sw2.read(),
+               sw3.read());
         switch (stepperState) {
             case 0:
-                stepper.setTargetMillimeter(0);
+                stepper.setTargetMillimeter(STP_POS_0);
                 break;
             case 1:
-                stepper.setTargetMillimeter(150);
+                stepper.setTargetMillimeter(STP_POS_1);
                 break;
             case 2:
-                stepper.setTargetMillimeter(250);
+                stepper.setTargetMillimeter(STP_POS_2);
                 break;
             default:
                 break;
@@ -333,7 +347,20 @@ int main() {
             default:
                 break;
         }
-        mg996r(7, armtheta);
+        switch (stepper.getPos()) {
+            case int(STP_POS_0 * 200.0 / (30 * 3.1415)):
+                currentStepperState = 0;
+                break;
+            case int(STP_POS_1 * 200.0 / (30 * 3.1415)):
+                currentStepperState = 1;
+                break;
+            case int(STP_POS_2 * 200.0 / (30 * 3.1415)):
+                currentStepperState = 2;
+                break;
+            default:
+                break;
+        }
+        mg996r(4, armtheta);
         // setServoAngle(7, 0);
         cnt++;
         sleep_ms(1);
