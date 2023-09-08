@@ -92,9 +92,9 @@ int main() {
     initTimer();
     while (1) {
         // motor[0].setVel(90);
-        motor[0].setPos(90);
+        // motor[0].setPos(90);
         // motor[1].setVel(-50);
-        motor[1].setPos(-1125);
+        // motor[1].setPos(-1125);
         // tx_data[0] = 0x0c;
         // tx_data[1] = 0x00;
 
@@ -102,14 +102,14 @@ int main() {
         // spi_write_read_blocking(spi0, tx_data, rx_data, 2);
         // dum0.write(1);
         // printf("data: %x, %x\n", rx_data[0], rx_data[1]);
-        // printf("%d, %d, %d\n",amt232.get(),amt232.getRaw(),amt232.get()%4096);
+        printf("%d, %d, %d\n",amt232.get(),amt232.getRaw(),amt232.get()%4096);
         // printf("%d\n", enc.get());
-        // sleep_ms(6000);
+        sleep_ms(50);
 
         // sleep_ms(6000);
-        sleep_ms(5000);
-        motor[0].setPos(0);
-        motor[1].setPos(0);
-        sleep_ms(5000);
+        // sleep_ms(5000);
+        // motor[0].setPos(0);
+        // motor[1].setPos(0);
+        // sleep_ms(5000);
     }
 }
