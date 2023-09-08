@@ -1,3 +1,4 @@
+#include <hardware/flash.h>
 #include <hardware/watchdog.h>
 #include <pico/stdlib.h>
 #include <stdio.h>
@@ -17,7 +18,9 @@
 const uint CS_PIN = 25;
 const int STP_POS_0 = 0;
 const int STP_POS_1 = 150;
-const int STP_POS_2 = 250;
+const int STP_POS_2 = 200;
+const int STP_POS_3 = 250;
+uint8_t config[FLASH_PAGE_SIZE] = {0};
 
 AMT232 amt232(CS_PIN, 3, 0, 2);
 Qenc enc(12);
@@ -27,7 +30,7 @@ Gpio dum1(6, OUTPUT);
 Gpio sw0(22, INPUT_PD);
 Gpio sw1(23, INPUT_PD);
 Gpio sw2(7, INPUT_PD);
-Gpio sw3(15, INPUT_PD);
+Gpio sw3(15, OUTPUT);
 Pwm pwm0(19, 10000, 1);
 Pwm pwm1(16, 10000, 1);
 Servo servo0(22);
@@ -98,6 +101,23 @@ void setServoAngle(int servoNum, float deg) {
     pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
 }
 
+static void writeFlash(uint8_t* data, uint32_t size = FLASH_PAGE_SIZE) {
+    const uint32_t FLASH_TARGET_OFFSET = 0x1F0000;
+    uint8_t write_data[FLASH_PAGE_SIZE];
+    memcpy(write_data, data, size);
+
+    uint32_t ints = save_and_disable_interrupts();
+    flash_range_erase(FLASH_TARGET_OFFSET, FLASH_SECTOR_SIZE);
+    flash_range_program(FLASH_TARGET_OFFSET, write_data, FLASH_PAGE_SIZE);
+    restore_interrupts(ints);
+}
+
+void loadFlash(uint8_t* data, uint32_t size = FLASH_PAGE_SIZE) {
+    const uint32_t FLASH_TARGET_OFFSET = 0x1F0000;
+    const uint8_t* flash_target_contents = (const uint8_t*)(XIP_BASE + FLASH_TARGET_OFFSET);
+    memcpy(data, flash_target_contents, size);
+}
+
 void mg996r(int servoNum, float deg) {
     static int prevDeg;
     // pwm.writeMicroseconds(servoNum, 0);
@@ -129,7 +149,7 @@ void reset() {
 void initTimer() {
     add_repeating_timer_ms(-10, timer_cb, NULL, &timer);
     add_repeating_timer_ms(-100, timer_cb_pos, NULL, &timer1);
-    add_repeating_timer_ms(-2, timer_cb_stp, NULL, &timer2);
+    add_repeating_timer_us(-500, timer_cb_stp, NULL, &timer2);
 }
 
 void serial_read() {
@@ -146,6 +166,7 @@ void serial_read() {
             }
             if (c == 'r') {
                 // reset microcontroller
+                sw3.write(0);
                 reset();
             }
             cnt++;
@@ -189,11 +210,58 @@ void homing() {
             break;
         }
     }
-    printf("Motor[1] homing don e\n");
+    printf("Motor[1] homing done\n");
 }
 
 int main() {
     stdio_init_all();
+
+    sw3.init();
+
+    sleep_ms(10);
+    sw0.init();
+    sw1.init();
+    sw2.init();
+    cs0.init();
+    dum0.init();
+    dum1.init();
+    cs0.write(1);
+    dum0.write(1);
+    dum1.write(1);
+    slp.init();
+    stp.init();
+    slp.write(1);
+    ex.init();
+    stp_dir.init();
+    slp.write(1);
+    servo0.init();
+    sw0.init();
+    ex.mode(1, OUTPUT);
+
+    ex.set();
+    ex.write(1, 1);
+    loadFlash(config);
+    amt232.setOffset(config[0] | (config[1] << 8));
+
+    if(!sw1.read()){
+        for(int i = 0; i < 30; i++){
+            printf(".");
+            sleep_ms(100);
+        }
+        printf("\nCalib mode\n");
+
+        printf("Prev offset: %4d\n", config[0] | (config[1] << 8));
+        amt232.init();
+        int offset = amt232.getRaw();
+        amt232.setOffset(offset);
+        config[0] = offset & 0xff;
+        config[1] = (offset >> 8) & 0xff;
+        writeFlash(config);
+        printf("New  offset: %4d\n", offset);
+        printf("Calib done. Please reset.\n");
+        while(1);
+    }
+
     while (1) {
         static char buf[255];
         int cnt = 0;
@@ -214,39 +282,7 @@ int main() {
         }
     }
     multicore_launch_core1(serial_read);
-    sleep_ms(10);
-    sw0.init();
-    sw1.init();
-    sw2.init();
-    sw3.init();
-    cs0.init();
-    dum0.init();
-    dum1.init();
-    cs0.write(1);
-    dum0.write(1);
-    dum1.write(1);
-    slp.init();
-    stp.init();
-    slp.write(1);
-    ex.init();
-    stp_dir.init();
-    slp.write(1);
-    servo0.init();
-    sw0.init();
-    // // ex.mode(0, OUTPUT);
-    ex.mode(1, OUTPUT);
-    // // ex.mode(2, OUTPUT);
-    // // ex.mode(3, OUTPUT);
-    // // ex.mode(4, OUTPUT);
-    // // ex.mode(5, INPUT_PU);
-    // // ex.mode(6, INPUT_PU);
-    // // ex.mode(7, INPUT_PU);
-
-    ex.set();
-    // // ex.write(0, 1);
-    ex.write(1, 1);
-    // // slp.write(1);
-
+    sw3.write(1);
     motor[0].init();
     motor[0].setPosGain(3.8, 0.12, 1.2);
     motor[0].setPos(0);
@@ -259,7 +295,6 @@ int main() {
     sleep_ms(10);
     stepper.init();
     stepper.sleep(1);
-    stepper.setPeriod(2);
     amt232.init();
 
     // motor[0].duty(0.5);
@@ -298,7 +333,7 @@ int main() {
             degpos[1] = 540;
         }
         motor[1].setPos(degpos[1] * 360 / 72 < 0 ? 0 : degpos[1] * 360 / 72);
-        printf("%f, %f, %d, %d, %d, %d, %d, %f, %f，%d, %d, %d, %d, %d, %d\n",
+        printf("%f, %f, %d, %d, %d, %d, %d, %f, %f，%d, %d, %d, %d, %d\n",
                -motor[0].getCurrent(),
                motor[1].getCurrent() * 72 / 360.0,
                currentStepperState,
@@ -313,6 +348,11 @@ int main() {
                sw1.read(),
                sw2.read(),
                sw3.read());
+        if(currentStepperState-stepperState<0){
+            stepper.setPeriod(4);
+        }else{
+            stepper.setPeriod(7);
+        }
         switch (stepperState) {
             case 0:
                 stepper.setTargetMillimeter(STP_POS_0);
@@ -322,6 +362,9 @@ int main() {
                 break;
             case 2:
                 stepper.setTargetMillimeter(STP_POS_2);
+                break;
+            case 3:
+                stepper.setTargetMillimeter(STP_POS_3);
                 break;
             default:
                 break;
@@ -357,10 +400,13 @@ int main() {
             case int(STP_POS_2 * 200.0 / (30 * 3.1415)):
                 currentStepperState = 2;
                 break;
+            case int(STP_POS_3 * 200.0 / (30 * 3.1415)):
+                currentStepperState = 3;
+                break;
             default:
                 break;
         }
-        mg996r(4, armtheta);
+        mg996r(5, armtheta);
         // setServoAngle(7, 0);
         cnt++;
         sleep_ms(1);
