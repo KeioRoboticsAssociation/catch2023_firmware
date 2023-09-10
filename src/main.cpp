@@ -17,9 +17,11 @@
 
 const uint CS_PIN = 25;
 const int STP_POS_0 = 0;
-const int STP_POS_1 = 150;
-const int STP_POS_2 = 200;
-const int STP_POS_3 = 250;
+const int STP_POS_1 = 40;
+const int STP_POS_2 = 205;
+const int STP_POS_3 = 220;
+const int STP_POS_4 = 250;
+const int STP_POS_5 = 270;
 uint8_t config[FLASH_PAGE_SIZE] = {0};
 
 AMT232 amt232(CS_PIN, 3, 0, 2);
@@ -127,15 +129,15 @@ void mg996r(int servoNum, float deg) {
         deg = 0;
     if (deg > 180)
         deg = 180;
-
+    // deg*=1.01;
     // if (deg - prevDeg > 0) {
     //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
     //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
     //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
     // } else {
-    pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
-    pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
-    pwm.writeMicroseconds(servoNum, int((deg * 10 + 550)));
+    pwm.writeMicroseconds(servoNum, int((deg * 10.06 + 550)));
+    pwm.writeMicroseconds(servoNum, int((deg * 10.06 + 550)));
+    pwm.writeMicroseconds(servoNum, int((deg * 10.06 + 550)));
     // }
     // prevDeg = deg;
 }
@@ -183,7 +185,7 @@ void catchObject() {
 }
 
 void releaseObject() {
-    setServoAngle(1, 130);
+    setServoAngle(1, 135);
     sleep_ms(10);
     setServoAngle(2, 135);
     sleep_ms(10);
@@ -283,6 +285,8 @@ int main() {
     }
     multicore_launch_core1(serial_read);
     sw3.write(1);
+
+    sleep_ms(100);
     motor[0].init();
     motor[0].setPosGain(3.8, 0.12, 1.2);
     motor[0].setPos(0);
@@ -351,7 +355,7 @@ int main() {
         if(currentStepperState-stepperState<0){
             stepper.setPeriod(4);
         }else{
-            stepper.setPeriod(7);
+            stepper.setPeriod(8);
         }
         switch (stepperState) {
             case 0:
@@ -365,6 +369,12 @@ int main() {
                 break;
             case 3:
                 stepper.setTargetMillimeter(STP_POS_3);
+                break;
+            case 4:
+                stepper.setTargetMillimeter(STP_POS_4);
+                break;
+            case 5:
+                stepper.setTargetMillimeter(STP_POS_5);
                 break;
             default:
                 break;
@@ -402,6 +412,12 @@ int main() {
                 break;
             case int(STP_POS_3 * 200.0 / (30 * 3.1415)):
                 currentStepperState = 3;
+                break;
+            case int(STP_POS_4 * 200.0 / (30 * 3.1415)):
+                currentStepperState = 4;
+                break;
+            case int(STP_POS_5 * 200.0 / (30 * 3.1415)):
+                currentStepperState = 5;
                 break;
             default:
                 break;
