@@ -34,6 +34,7 @@ Stepper stepper(stp, slp, stp_dir);
 float degpos[2] = {0, 0};
 int stepperState = 0;
 char buf[255] = "";
+Gpio sw3(15, OUTPUT);
 static repeating_timer_t timer;
 static repeating_timer_t timer1;
 static repeating_timer_t timer2;
@@ -70,6 +71,12 @@ void setServoAngle(int servoNum, float deg) {
     pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
     pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
     pwm.writeMicroseconds(servoNum, int((deg * (2600 - 560) / 180.0) + 560));
+}
+
+void setServoMs(int servoNum, float ms) {
+    pwm.writeMicroseconds(servoNum, int(ms));
+    pwm.writeMicroseconds(servoNum, int(ms));
+    pwm.writeMicroseconds(servoNum, int(ms));
 }
 
 void mg996r(int servoNum, float deg) {
@@ -109,7 +116,6 @@ void initTimer() {
     // add_repeating_timer_ms(-100, timer_cb_pos, NULL, &timer1);
     add_repeating_timer_us(-500, timer_cb_stp, NULL, &timer2);
 }
-
 int servoPulseLength = 0;
 
 void serial_read() {
@@ -146,6 +152,8 @@ int main() {
     ex.init();
     slp.write(1);
     servo0.init();
+    sw3.init();
+    sw3.write(1);
     // // ex.mode(0, OUTPUT);
     ex.mode(1, OUTPUT);
     // // ex.mode(2, OUTPUT);
@@ -174,7 +182,7 @@ int main() {
     stepper.setPeriod(2);
     amt232.init();
     // initTimer();
-
+    
     pwm.begin();
     pwm.setOscillatorFrequency(27000000);
     pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
@@ -185,10 +193,12 @@ int main() {
 
     while (1) {
         int servoNum = 1;
-        setServoAngle(1, servoPulseLength);
-        setServoAngle(2, servoPulseLength);
-        setServoAngle(3, servoPulseLength);
+        // setServoAngle(1, servoPulseLength);
+        // setServoAngle(2, servoPulseLength);
+        // setServoAngle(3, servoPulseLength);
         // deg45(servoNum, servoPulseLength);
+        setServoMs(5, servoPulseLength);
+        printf("%d\n", servoPulseLength);
         sleep_ms(1000);
     }
 
