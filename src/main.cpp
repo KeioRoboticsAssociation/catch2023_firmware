@@ -135,9 +135,10 @@ void mg996r(int servoNum, float deg) {
     //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
     //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
     // } else {
-    pwm.writeMicroseconds(servoNum, int((deg * 10.06 + 550)));
-    pwm.writeMicroseconds(servoNum, int((deg * 10.06 + 550)));
-    pwm.writeMicroseconds(servoNum, int((deg * 10.06 + 550)));
+    int width = int(-0.0002*deg*deg*deg+0.0494*deg*deg+7.037*deg+550);
+    pwm.writeMicroseconds(servoNum, width);
+    pwm.writeMicroseconds(servoNum, width);
+    pwm.writeMicroseconds(servoNum, width);
     // }
     // prevDeg = deg;
 }
@@ -176,20 +177,38 @@ void serial_read() {
     }
 }
 
-void catchObject() {
-    setServoAngle(1, 60);
+void catchObject(int state) {
+    if (state >> 2 & 0b1) {
+        setServoAngle(1, 73);
+    } else {
+        setServoAngle(1, 8);
+    }
     sleep_ms(10);
-    setServoAngle(2, 60);
+    if (state >> 1 & 0b1) {
+        setServoAngle(2, 60);
+    } else {
+        setServoAngle(2, 0);
+    }
     sleep_ms(10);
-    setServoAngle(3, 60);
+    if (state >> 0 & 0b1) {
+        setServoAngle(3, 60);
+    } else {
+        setServoAngle(3, 0);
+    }
 }
 
-void releaseObject() {
-    setServoAngle(1, 135);
+void releaseObject(int state) {
+    if (state >> 2 & 0b1) {
+        setServoAngle(1, 8);
+    }
     sleep_ms(10);
-    setServoAngle(2, 135);
+    if (state >> 1 & 0b1) {
+        setServoAngle(2, 0);
+    }
     sleep_ms(10);
-    setServoAngle(3, 140);
+    if (state >> 0 & 0b1) {
+        setServoAngle(3, 0);
+    }
 }
 
 void homing() {
@@ -245,8 +264,8 @@ int main() {
     loadFlash(config);
     amt232.setOffset(config[0] | (config[1] << 8));
 
-    if(!sw1.read()){
-        for(int i = 0; i < 30; i++){
+    if (!sw1.read()) {
+        for (int i = 0; i < 30; i++) {
             printf(".");
             sleep_ms(100);
         }
@@ -261,7 +280,8 @@ int main() {
         writeFlash(config);
         printf("New  offset: %4d\n", offset);
         printf("Calib done. Please reset.\n");
-        while(1);
+        while (1)
+            ;
     }
 
     while (1) {
@@ -285,6 +305,10 @@ int main() {
     }
     multicore_launch_core1(serial_read);
     sw3.write(1);
+
+    pwm.begin();
+    pwm.setOscillatorFrequency(27000000);
+    pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
 
     sleep_ms(100);
     motor[0].init();
@@ -320,10 +344,6 @@ int main() {
     timer_cb_pos(nullptr);
     initTimer();
 
-    pwm.begin();
-    pwm.setOscillatorFrequency(27000000);
-    pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-
     servo0.write(0);
 
     // setServoAngle(0, 45s);
@@ -352,9 +372,9 @@ int main() {
                sw1.read(),
                sw2.read(),
                sw3.read());
-        if(currentStepperState-stepperState<0){
+        if (currentStepperState - stepperState < 0) {
             stepper.setPeriod(4);
-        }else{
+        } else {
             stepper.setPeriod(8);
         }
         switch (stepperState) {
@@ -376,20 +396,21 @@ int main() {
             case 5:
                 stepper.setTargetMillimeter(STP_POS_5);
                 break;
+            case 8:
+                while (1) {
+                    stp.write(1);
+                    sleep_ms(2);
+                    stp.write(0);
+                    sleep_ms(2);
+                    if (!sw2.read()) {
+                        break;
+                    }
+                }
+                stepper.reset();
             default:
                 break;
         }
-        switch (servoState) {
-            case 0:
-                catchObject();
-                break;
-
-            case 1:
-                releaseObject();
-                break;
-            default:
-                break;
-        }
+        catchObject(servoState);
         switch (hand) {
             case 0:
                 setServoAngle(0, 55);
