@@ -136,7 +136,8 @@ void mg996r(int servoNum, float deg) {
     //     pwm.writeMicroseconds(servoNum, int((deg * 9.822 + 600)));
     // } else {
     // int width = int(-0.0002*deg*deg*deg+0.0494*deg*deg+7.037*deg+550);
-    int width = int(deg * 10.02 + 550);
+    // int width = int(deg * 10.02 + 550);
+    int width = int(9.9333 * deg + 510);
     pwm.writeMicroseconds(servoNum, width);
     pwm.writeMicroseconds(servoNum, width);
     pwm.writeMicroseconds(servoNum, width);
