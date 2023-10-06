@@ -16,12 +16,12 @@
 #include "stepper.h"
 
 const uint CS_PIN = 25;
-const int STP_POS_0 = 0;
-const int STP_POS_1 = 40;
-const int STP_POS_2 = 205;
-const int STP_POS_3 = 220;
-const int STP_POS_4 = 250;
-const int STP_POS_5 = 270;
+// const int STP_POS_0 = 0;
+// const int STP_POS_1 = 40;
+// const int STP_POS_2 = 205;
+// const int STP_POS_3 = 220;
+// const int STP_POS_4 = 250;
+// const int STP_POS_5 = 270;
 uint8_t config[FLASH_PAGE_SIZE] = {0};
 
 AMT232 amt232(CS_PIN, 3, 0, 2);
@@ -181,7 +181,7 @@ void serial_read() {
 
 void catchObject(int state) {
     if (state >> 2 & 0b1) {
-        setServoAngle(1, 73);
+        setServoAngle(1, 78);
     } else {
         setServoAngle(1, 8);
     }
@@ -379,39 +379,40 @@ int main() {
         } else {
             stepper.setPeriod(8);
         }
-        switch (stepperState) {
-            case 0:
-                stepper.setTargetMillimeter(STP_POS_0);
-                break;
-            case 1:
-                stepper.setTargetMillimeter(STP_POS_1);
-                break;
-            case 2:
-                stepper.setTargetMillimeter(STP_POS_2);
-                break;
-            case 3:
-                stepper.setTargetMillimeter(STP_POS_3);
-                break;
-            case 4:
-                stepper.setTargetMillimeter(STP_POS_4);
-                break;
-            case 5:
-                stepper.setTargetMillimeter(STP_POS_5);
-                break;
-            case 8:
-                while (1) {
-                    stp.write(1);
-                    sleep_ms(2);
-                    stp.write(0);
-                    sleep_ms(2);
-                    if (!sw2.read()) {
-                        break;
-                    }
-                }
-                stepper.reset();
-            default:
-                break;
-        }
+        stepper.setTargetMillimeter(stepperState);
+        // switch (stepperState) {
+        //     case 0:
+        //         stepper.setTargetMillimeter(STP_POS_0);
+        //         break;
+        //     case 1:
+        //         stepper.setTargetMillimeter(STP_POS_1);
+        //         break;
+        //     case 2:
+        //         stepper.setTargetMillimeter(STP_POS_2);
+        //         break;
+        //     case 3:
+        //         stepper.setTargetMillimeter(STP_POS_3);
+        //         break;
+        //     case 4:
+        //         stepper.setTargetMillimeter(STP_POS_4);
+        //         break;
+        //     case 5:
+        //         stepper.setTargetMillimeter(STP_POS_5);
+        //         break;
+        //     case 8:
+        //         while (1) {
+        //             stp.write(1);
+        //             sleep_ms(2);
+        //             stp.write(0);
+        //             sleep_ms(2);
+        //             if (!sw2.read()) {
+        //                 break;
+        //             }
+        //         }
+        //         stepper.reset();
+        //     default:
+        //         break;
+        // }
         catchObject(servoState);
         switch (hand) {
             case 0:
@@ -423,28 +424,29 @@ int main() {
             default:
                 break;
         }
-        switch (stepper.getPos()) {
-            case int(STP_POS_0 * 200.0 / (30 * 3.1415)):
-                currentStepperState = 0;
-                break;
-            case int(STP_POS_1 * 200.0 / (30 * 3.1415)):
-                currentStepperState = 1;
-                break;
-            case int(STP_POS_2 * 200.0 / (30 * 3.1415)):
-                currentStepperState = 2;
-                break;
-            case int(STP_POS_3 * 200.0 / (30 * 3.1415)):
-                currentStepperState = 3;
-                break;
-            case int(STP_POS_4 * 200.0 / (30 * 3.1415)):
-                currentStepperState = 4;
-                break;
-            case int(STP_POS_5 * 200.0 / (30 * 3.1415)):
-                currentStepperState = 5;
-                break;
-            default:
-                break;
-        }
+        // switch (stepper.getPos()) {
+        //     case int(STP_POS_0 * 200.0 / (30 * 3.1415)):
+        //         currentStepperState = 0;
+        //         break;
+        //     case int(STP_POS_1 * 200.0 / (30 * 3.1415)):
+        //         currentStepperState = 1;
+        //         break;
+        //     case int(STP_POS_2 * 200.0 / (30 * 3.1415)):
+        //         currentStepperState = 2;
+        //         break;
+        //     case int(STP_POS_3 * 200.0 / (30 * 3.1415)):
+        //         currentStepperState = 3;
+        //         break;
+        //     case int(STP_POS_4 * 200.0 / (30 * 3.1415)):
+        //         currentStepperState = 4;
+        //         break;
+        //     case int(STP_POS_5 * 200.0 / (30 * 3.1415)):
+        //         currentStepperState = 5;
+        //         break;
+        //     default:
+        //         break;
+        // }
+        currentStepperState = stepper.getPos() * (30 * 3.1415) / 200.0;
         mg996r(5, armtheta);
         // setServoAngle(7, 0);
         cnt++;
